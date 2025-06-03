@@ -69,7 +69,7 @@ class UKGovernmentScraper:
         """Scrape Members of Parliament (MPs) from House of Commons.
         
         Args:
-            current: If True, filter to only current members (those without end dates)
+            current: If True, filter to only current members (uses today's date)
             from_date: Get members from this date onwards (YYYY-MM-DD format)
             to_date: Get members up to this date (YYYY-MM-DD format)
             on_date: Get members who were serving on this specific date (YYYY-MM-DD format)
@@ -80,21 +80,22 @@ class UKGovernmentScraper:
         try:
             # Build kwargs for pdpy function
             kwargs = {}
+            
+            # Handle date filtering parameters - they can be combined
             if from_date:
                 kwargs["from_date"] = from_date
             if to_date:
                 kwargs["to_date"] = to_date
             if on_date:
                 kwargs["on_date"] = on_date
+            
+            # If current=True and no on_date is specified, use today's date
+            # Note: current=True with on_date specified will use the specified on_date
+            if current and not on_date:
+                kwargs["on_date"] = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
             data = pdpy.fetch_mps(**kwargs)  # type: ignore[attr-defined]
             data_dict = self._convert_to_dict(data)
-
-            # If current=True and we have list data, filter by end date
-            if current and isinstance(data_dict, list):
-                # For MPs, we need to check if they have an end date for their membership
-                # This would typically be in a field like 'membership_end_date' or similar
-                data_dict = self._filter_current_members(data_dict, "membership_end_date")
 
             # Cache the data
             cache_key = f"mps_current_{current}_from_{from_date}_to_{to_date}_on_{on_date}"
@@ -114,7 +115,7 @@ class UKGovernmentScraper:
         """Scrape Members of House of Lords.
         
         Args:
-            current: If True, filter to only current members (those without end dates)
+            current: If True, filter to only current members (uses today's date)
             from_date: Get members from this date onwards (YYYY-MM-DD format)
             to_date: Get members up to this date (YYYY-MM-DD format)
             on_date: Get members who were serving on this specific date (YYYY-MM-DD format)
@@ -125,20 +126,22 @@ class UKGovernmentScraper:
         try:
             # Build kwargs for pdpy function
             kwargs = {}
+            
+            # Handle date filtering parameters - they can be combined
             if from_date:
                 kwargs["from_date"] = from_date
             if to_date:
                 kwargs["to_date"] = to_date
             if on_date:
                 kwargs["on_date"] = on_date
+            
+            # If current=True and no on_date is specified, use today's date
+            # Note: current=True with on_date specified will use the specified on_date
+            if current and not on_date:
+                kwargs["on_date"] = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
             data = pdpy.fetch_lords(**kwargs)  # type: ignore[attr-defined]
             data_dict = self._convert_to_dict(data)
-
-            # If current=True and we have list data, filter by end date
-            if current and isinstance(data_dict, list):
-                # For Lords, check for membership end date
-                data_dict = self._filter_current_members(data_dict, "membership_end_date")
 
             # Cache the data
             cache_key = f"lords_current_{current}_from_{from_date}_to_{to_date}_on_{on_date}"
@@ -337,24 +340,26 @@ class UKGovernmentScraper:
 
         return exported_files
 
-    def _export_single_data_type(self, data_type: str, outputs_dir: Path, timestamp: str) -> FileList:
+    def _export_single_data_type(
+        self, data_type: str, outputs_dir: Path, timestamp: str, current: bool = False
+    ) -> FileList:
         """Export a single data type to CSV."""
         exported_files: FileList = []
 
         if data_type == "mps":
-            mps_data = self.scrape_mps()
+            mps_data = self.scrape_mps(current=current)
             mps_file = outputs_dir / f"uk_mps_{timestamp}.csv"
             self._export_dataframe_to_csv(mps_data, mps_file)
             exported_files.append(str(mps_file))
 
         elif data_type == "lords":
-            lords_data = self.scrape_lords()
+            lords_data = self.scrape_lords(current=current)
             lords_file = outputs_dir / f"uk_lords_{timestamp}.csv"
             self._export_dataframe_to_csv(lords_data, lords_file)
             exported_files.append(str(lords_file))
 
         elif data_type == "government-roles":
-            gov_roles_data = self.scrape_government_roles()
+            gov_roles_data = self.scrape_government_roles(current=current)
             if "mps_government_roles" in gov_roles_data:
                 mps_gov_file = outputs_dir / f"uk_mps_government_roles_{timestamp}.csv"
                 self._export_dataframe_to_csv(gov_roles_data["mps_government_roles"], mps_gov_file)
@@ -366,7 +371,7 @@ class UKGovernmentScraper:
                 exported_files.append(str(lords_gov_file))
 
         elif data_type == "committees":
-            committees_data = self.scrape_committee_memberships()
+            committees_data = self.scrape_committee_memberships(current=current)
             if "mps_committee_memberships" in committees_data:
                 mps_comm_file = outputs_dir / f"uk_mps_committee_memberships_{timestamp}.csv"
                 self._export_dataframe_to_csv(committees_data["mps_committee_memberships"], mps_comm_file)
@@ -384,11 +389,11 @@ class UKGovernmentScraper:
         try:
             outputs_dir = self._create_outputs_dir()
             timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-
+            
             if data_type == "all":
                 exported_files = self._export_all_data_to_csv(outputs_dir, timestamp, current)
             else:
-                exported_files = self._export_single_data_type(data_type, outputs_dir, timestamp)
+                exported_files = self._export_single_data_type(data_type, outputs_dir, timestamp, current)
 
             logger.info("Exported %d CSV files to outputs directory", len(exported_files))
 
