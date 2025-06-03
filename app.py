@@ -341,19 +341,20 @@ class UKGovernmentScraper:
         return exported_files
 
     def _export_single_data_type(
-        self, data_type: str, outputs_dir: Path, timestamp: str, current: bool = False
+        self, data_type: str, outputs_dir: Path, timestamp: str, current: bool = False,
+        from_date: str | None = None, to_date: str | None = None, on_date: str | None = None,
     ) -> FileList:
         """Export a single data type to CSV."""
         exported_files: FileList = []
 
         if data_type == "mps":
-            mps_data = self.scrape_mps(current=current)
+            mps_data = self.scrape_mps(current=current, from_date=from_date, to_date=to_date, on_date=on_date)
             mps_file = outputs_dir / f"uk_mps_{timestamp}.csv"
             self._export_dataframe_to_csv(mps_data, mps_file)
             exported_files.append(str(mps_file))
 
         elif data_type == "lords":
-            lords_data = self.scrape_lords(current=current)
+            lords_data = self.scrape_lords(current=current, from_date=from_date, to_date=to_date, on_date=on_date)
             lords_file = outputs_dir / f"uk_lords_{timestamp}.csv"
             self._export_dataframe_to_csv(lords_data, lords_file)
             exported_files.append(str(lords_file))
@@ -384,7 +385,8 @@ class UKGovernmentScraper:
 
         return exported_files
 
-    def export_to_csv(self, data_type: str = "all", current: bool = False) -> FileList:
+    def export_to_csv(self, data_type: str = "all", current: bool = False,
+                      from_date: str | None = None, to_date: str | None = None, on_date: str | None = None) -> FileList:
         """Export scraped data to CSV files in the outputs folder."""
         try:
             outputs_dir = self._create_outputs_dir()
@@ -393,7 +395,7 @@ class UKGovernmentScraper:
             if data_type == "all":
                 exported_files = self._export_all_data_to_csv(outputs_dir, timestamp, current)
             else:
-                exported_files = self._export_single_data_type(data_type, outputs_dir, timestamp, current)
+                exported_files = self._export_single_data_type(data_type, outputs_dir, timestamp, current, from_date, to_date, on_date)
 
             logger.info("Exported %d CSV files to outputs directory", len(exported_files))
 
@@ -631,6 +633,11 @@ def export_csv() -> tuple[Any, int]:
         # Get data type from query parameter, default to 'all'
         data_type = request.args.get("type", "all")
         current = request.args.get("current", "false").lower() == "true"
+        
+        # Get date filtering parameters (only applicable for mps and lords)
+        from_date = request.args.get("from_date")
+        to_date = request.args.get("to_date")
+        on_date = request.args.get("on_date")
 
         # Validate data type
         valid_types = ["all", "mps", "lords", "government-roles", "committees"]
@@ -644,7 +651,7 @@ def export_csv() -> tuple[Any, int]:
             ), 400
 
         # Export to CSV
-        exported_files = scraper.export_to_csv(data_type, current)
+        exported_files = scraper.export_to_csv(data_type, current, from_date, to_date, on_date)
 
         return jsonify(
             {

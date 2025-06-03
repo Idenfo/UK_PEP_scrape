@@ -131,7 +131,14 @@ curl -X POST "http://localhost:5001/export/csv?type=government-roles&current=tru
 # Export current committee memberships
 curl -X POST "http://localhost:5001/export/csv?type=committees&current=true"
 
-curl -X POST http://localhost:5001/export/csv?type=committees
+# Export MPs from 2024 onwards (date filtering)
+curl -X POST "http://localhost:5001/export/csv?type=mps&from_date=2024-01-01"
+
+# Export Lords serving on specific date
+curl -X POST "http://localhost:5001/export/csv?type=lords&on_date=2024-06-01"
+
+# Export current MPs from 2024 onwards (combining filters)
+curl -X POST "http://localhost:5001/export/csv?type=mps&current=true&from_date=2024-01-01"
 ```
 
 ## CSV Export Endpoint Details
@@ -145,6 +152,9 @@ The CSV export endpoint allows you to export scraped UK Parliament data to CSV f
 - **Query Parameters**: 
   - `type` (required): Data type to export (`all`, `mps`, `lords`, `government-roles`, `committees`)
   - **`current=true`** (optional): Export only current/serving members (default: false)
+  - **`from_date=YYYY-MM-DD`** (optional): Export members from this date onwards (MPs/Lords only)
+  - **`to_date=YYYY-MM-DD`** (optional): Export members up to this date (MPs/Lords only)
+  - **`on_date=YYYY-MM-DD`** (optional): Export members serving on specific date (MPs/Lords only)
 
 ### Supported Data Types
 
