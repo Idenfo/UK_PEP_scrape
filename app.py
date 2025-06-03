@@ -45,14 +45,60 @@ class UKGovernmentScraper:
         """Convert pandas DataFrame to dict if possible, otherwise return as-is."""
         return data.to_dict("records") if hasattr(data, "to_dict") else data
 
-    def scrape_mps(self) -> list[dict[str, Any]]:
-        """Scrape current Members of Parliament (MPs) from House of Commons."""
+    def _filter_current_members(self, data: list[dict[str, Any]], end_date_field: str) -> list[dict[str, Any]]:
+        """Filter data to only include current members based on end date field."""
+        filtered_data = []
+        for record in data:
+            end_date = record.get(end_date_field)
+            # Keep record if end_date is None, empty string, or NaN
+            if end_date is None or end_date == "":
+                filtered_data.append(record)
+            else:
+                try:
+                    # Check if it's a pandas NaN value
+                    if pd.isna(end_date):
+                        filtered_data.append(record)
+                except (TypeError, ValueError):
+                    # If pd.isna fails, keep the record if it's falsy
+                    if not end_date:
+                        filtered_data.append(record)
+        return filtered_data
+
+    def scrape_mps(self, current: bool = False, from_date: str | None = None,
+                   to_date: str | None = None, on_date: str | None = None) -> list[dict[str, Any]]:
+        """Scrape Members of Parliament (MPs) from House of Commons.
+        
+        Args:
+            current: If True, filter to only current members (those without end dates)
+            from_date: Get members from this date onwards (YYYY-MM-DD format)
+            to_date: Get members up to this date (YYYY-MM-DD format)
+            on_date: Get members who were serving on this specific date (YYYY-MM-DD format)
+            
+        Returns:
+            List of MP records as dictionaries
+        """
         try:
-            data = pdpy.fetch_mps()  # type: ignore[attr-defined]
+            # Build kwargs for pdpy function
+            kwargs = {}
+            if from_date:
+                kwargs["from_date"] = from_date
+            if to_date:
+                kwargs["to_date"] = to_date
+            if on_date:
+                kwargs["on_date"] = on_date
+
+            data = pdpy.fetch_mps(**kwargs)  # type: ignore[attr-defined]
             data_dict = self._convert_to_dict(data)
 
+            # If current=True and we have list data, filter by end date
+            if current and isinstance(data_dict, list):
+                # For MPs, we need to check if they have an end date for their membership
+                # This would typically be in a field like 'membership_end_date' or similar
+                data_dict = self._filter_current_members(data_dict, "membership_end_date")
+
             # Cache the data
-            self.cache["mps"] = {
+            cache_key = f"mps_current_{current}_from_{from_date}_to_{to_date}_on_{on_date}"
+            self.cache[cache_key] = {
                 "data": data_dict,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
@@ -61,16 +107,42 @@ class UKGovernmentScraper:
             logger.exception("Error scraping MPs")
             raise
         else:
-            return data_dict
+            return data_dict if isinstance(data_dict, list) else []
 
-    def scrape_lords(self) -> list[dict[str, Any]]:
-        """Scrape current Members of House of Lords."""
+    def scrape_lords(self, current: bool = False, from_date: str | None = None,
+                     to_date: str | None = None, on_date: str | None = None) -> list[dict[str, Any]]:
+        """Scrape Members of House of Lords.
+        
+        Args:
+            current: If True, filter to only current members (those without end dates)
+            from_date: Get members from this date onwards (YYYY-MM-DD format)
+            to_date: Get members up to this date (YYYY-MM-DD format)
+            on_date: Get members who were serving on this specific date (YYYY-MM-DD format)
+            
+        Returns:
+            List of Lords records as dictionaries
+        """
         try:
-            data = pdpy.fetch_lords()  # type: ignore[attr-defined]
+            # Build kwargs for pdpy function
+            kwargs = {}
+            if from_date:
+                kwargs["from_date"] = from_date
+            if to_date:
+                kwargs["to_date"] = to_date
+            if on_date:
+                kwargs["on_date"] = on_date
+
+            data = pdpy.fetch_lords(**kwargs)  # type: ignore[attr-defined]
             data_dict = self._convert_to_dict(data)
 
+            # If current=True and we have list data, filter by end date
+            if current and isinstance(data_dict, list):
+                # For Lords, check for membership end date
+                data_dict = self._filter_current_members(data_dict, "membership_end_date")
+
             # Cache the data
-            self.cache["lords"] = {
+            cache_key = f"lords_current_{current}_from_{from_date}_to_{to_date}_on_{on_date}"
+            self.cache[cache_key] = {
                 "data": data_dict,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
@@ -79,10 +151,17 @@ class UKGovernmentScraper:
             logger.exception("Error scraping Lords")
             raise
         else:
-            return data_dict
+            return data_dict if isinstance(data_dict, list) else []
 
-    def scrape_government_roles(self) -> dict[str, Any]:
-        """Scrape government roles for both MPs and Lords."""
+    def scrape_government_roles(self, current: bool = False) -> dict[str, Any]:
+        """Scrape government roles for both MPs and Lords.
+        
+        Args:
+            current: If True, filter to only current roles (those without end dates)
+            
+        Returns:
+            Dictionary containing MPs and Lords government roles
+        """
         try:
             mps_gov_roles = pdpy.fetch_mps_government_roles()  # type: ignore[attr-defined]
             lords_gov_roles = pdpy.fetch_lords_government_roles()  # type: ignore[attr-defined]
@@ -90,6 +169,13 @@ class UKGovernmentScraper:
             # Convert DataFrames to dicts
             mps_roles = self._convert_to_dict(mps_gov_roles)
             lords_roles = self._convert_to_dict(lords_gov_roles)
+
+            # Filter for current roles if requested
+            if current:
+                if isinstance(mps_roles, list):
+                    mps_roles = self._filter_current_members(mps_roles, "government_incumbency_end_date")
+                if isinstance(lords_roles, list):
+                    lords_roles = self._filter_current_members(lords_roles, "government_incumbency_end_date")
 
         except Exception:
             logger.exception("Error scraping government roles")
@@ -100,8 +186,15 @@ class UKGovernmentScraper:
                 "lords_government_roles": lords_roles,
             }
 
-    def scrape_committee_memberships(self) -> dict[str, Any]:
-        """Scrape committee memberships."""
+    def scrape_committee_memberships(self, current: bool = False) -> dict[str, Any]:
+        """Scrape committee memberships.
+        
+        Args:
+            current: If True, filter to only current memberships (those without end dates)
+            
+        Returns:
+            Dictionary containing MPs and Lords committee memberships
+        """
         try:
             mps_committees = pdpy.fetch_mps_committee_memberships()  # type: ignore[attr-defined]
             lords_committees = pdpy.fetch_lords_committee_memberships()  # type: ignore[attr-defined]
@@ -109,6 +202,13 @@ class UKGovernmentScraper:
             # Convert DataFrames to dicts
             mps_comm = self._convert_to_dict(mps_committees)
             lords_comm = self._convert_to_dict(lords_committees)
+
+            # Filter for current memberships if requested
+            if current:
+                if isinstance(mps_comm, list):
+                    mps_comm = self._filter_current_members(mps_comm, "committee_membership_end_date")
+                if isinstance(lords_comm, list):
+                    lords_comm = self._filter_current_members(lords_comm, "committee_membership_end_date")
 
         except Exception:
             logger.exception("Error scraping committee memberships")
@@ -119,16 +219,23 @@ class UKGovernmentScraper:
                 "lords_committee_memberships": lords_comm,
             }
 
-    def scrape_all_data(self) -> dict[str, Any]:
-        """Scrape all available UK government and parliamentary data."""
+    def scrape_all_data(self, current: bool = False) -> dict[str, Any]:
+        """Scrape all available UK government and parliamentary data.
+        
+        Args:
+            current: If True, filter to only current members/roles (those without end dates)
+            
+        Returns:
+            Dictionary containing all scraped data
+        """
         try:
             logger.info("Starting comprehensive data scrape")
 
             # Scrape all data types
-            mps = self.scrape_mps()
-            lords = self.scrape_lords()
-            government_roles = self.scrape_government_roles()
-            committees = self.scrape_committee_memberships()
+            mps = self.scrape_mps(current=current)
+            lords = self.scrape_lords(current=current)
+            government_roles = self.scrape_government_roles(current=current)
+            committees = self.scrape_committee_memberships(current=current)
 
             data = {
                 "metadata": {
@@ -185,10 +292,10 @@ class UKGovernmentScraper:
         data_frame = pd.DataFrame(data)
         data_frame.to_csv(file_path, index=False)
 
-    def _export_all_data_to_csv(self, outputs_dir: Path, timestamp: str) -> FileList:
+    def _export_all_data_to_csv(self, outputs_dir: Path, timestamp: str, current: bool = False) -> FileList:
         """Export all data types to CSV files."""
         exported_files: FileList = []
-        all_data = self.scrape_all_data()
+        all_data = self.scrape_all_data(current=current)
 
         # Export MPs
         if "members_of_parliament" in all_data:
@@ -272,14 +379,14 @@ class UKGovernmentScraper:
 
         return exported_files
 
-    def export_to_csv(self, data_type: str = "all") -> FileList:
+    def export_to_csv(self, data_type: str = "all", current: bool = False) -> FileList:
         """Export scraped data to CSV files in the outputs folder."""
         try:
             outputs_dir = self._create_outputs_dir()
             timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
 
             if data_type == "all":
-                exported_files = self._export_all_data_to_csv(outputs_dir, timestamp)
+                exported_files = self._export_all_data_to_csv(outputs_dir, timestamp, current)
             else:
                 exported_files = self._export_single_data_type(data_type, outputs_dir, timestamp)
 
@@ -305,13 +412,24 @@ def index() -> Any:
             "status": "active",
             "version": "1.0.0",
             "endpoints": {
-                "/scrape/all": "Scrape all government members and employees",
-                "/scrape/mps": "Scrape only MPs from House of Commons",
-                "/scrape/lords": "Scrape only members of House of Lords",
-                "/scrape/committees": "Scrape committee memberships",
-                "/scrape/government-roles": "Scrape government roles",
+                "/scrape/all": "Scrape all government members and employees (supports ?current=true&cache=true)",
+                "/scrape/mps": "Scrape only MPs from House of Commons "
+                               "(supports ?current=true&from_date=YYYY-MM-DD&to_date=YYYY-MM-DD&on_date=YYYY-MM-DD)",
+                "/scrape/lords": "Scrape only members of House of Lords "
+                                 "(supports ?current=true&from_date=YYYY-MM-DD&to_date=YYYY-MM-DD&on_date=YYYY-MM-DD)",
+                "/scrape/committees": "Scrape committee memberships (supports ?current=true)",
+                "/scrape/government-roles": "Scrape government roles (supports ?current=true)",
                 "/health": "Service health check",
-                "/export/csv": "Export scraped data to CSV files",
+                "/export/csv": "Export scraped data to CSV files "
+                               "(supports ?type=all|mps|lords|government-roles|committees&current=true)",
+            },
+            "query_parameters": {
+                "current": "Boolean - filter to only current members/roles (default: false)",
+                "from_date": "String - get members from this date onwards (YYYY-MM-DD format)",
+                "to_date": "String - get members up to this date (YYYY-MM-DD format)",
+                "on_date": "String - get members serving on specific date (YYYY-MM-DD format)",
+                "cache": "Boolean - use cached data if available (default: false, only for /scrape/all)",
+                "type": "String - data type to export (default: all, only for /export/csv)",
             },
             "last_updated": scraper.last_updated.isoformat() if scraper.last_updated else None,
         },
@@ -336,13 +454,14 @@ def scrape_all() -> tuple[Any, int]:
     try:
         # Check if we should use cached data (optional query parameter)
         use_cache = request.args.get("cache", "false").lower() == "true"
+        current = request.args.get("current", "false").lower() == "true"
 
         if use_cache and "all" in scraper.cache:
             logger.info("Returning cached data")
             return jsonify(scraper.cache["all"]), 200
 
         # Perform fresh scrape
-        data = scraper.scrape_all_data()
+        data = scraper.scrape_all_data(current=current)
         return jsonify(data), 200
 
     except Exception:
@@ -360,17 +479,27 @@ def scrape_all() -> tuple[Any, int]:
 def scrape_mps_endpoint() -> tuple[Any, int]:
     """Scrape only Members of Parliament from House of Commons."""
     try:
-        mps_data = scraper.scrape_mps()
+        # Get optional query parameters
+        current = request.args.get("current", "false").lower() == "true"
+        from_date = request.args.get("from_date")
+        to_date = request.args.get("to_date")
+        on_date = request.args.get("on_date")
+
+        mps_data = scraper.scrape_mps(current=current, from_date=from_date, to_date=to_date, on_date=on_date)
+        
         return jsonify(
             {
                 "metadata": {
                     "scraped_at": datetime.now(timezone.utc).isoformat(),
                     "data_type": "Members of Parliament - House of Commons",
+                    "filter_current": current,
+                    "from_date": from_date,
+                    "to_date": to_date,
+                    "on_date": on_date,
                 },
                 "members_of_parliament": mps_data,
                 "summary": {
                     "total_count": len(mps_data),
-                    "current_count": len(mps_data),  # All MPs returned are current
                 },
             },
         ), 200
@@ -389,17 +518,27 @@ def scrape_mps_endpoint() -> tuple[Any, int]:
 def scrape_lords_endpoint() -> tuple[Any, int]:
     """Scrape only members of House of Lords."""
     try:
-        lords_data = scraper.scrape_lords()
+        # Get optional query parameters
+        current = request.args.get("current", "false").lower() == "true"
+        from_date = request.args.get("from_date")
+        to_date = request.args.get("to_date")
+        on_date = request.args.get("on_date")
+
+        lords_data = scraper.scrape_lords(current=current, from_date=from_date, to_date=to_date, on_date=on_date)
+        
         return jsonify(
             {
                 "metadata": {
                     "scraped_at": datetime.now(timezone.utc).isoformat(),
                     "data_type": "Members of House of Lords",
+                    "filter_current": current,
+                    "from_date": from_date,
+                    "to_date": to_date,
+                    "on_date": on_date,
                 },
                 "house_of_lords": lords_data,
                 "summary": {
                     "total_count": len(lords_data),
-                    "current_count": len(lords_data),  # All Lords returned are current
                 },
             },
         ), 200
@@ -418,12 +557,16 @@ def scrape_lords_endpoint() -> tuple[Any, int]:
 def scrape_committees() -> tuple[Any, int]:
     """Scrape committee memberships."""
     try:
-        committees_data = scraper.scrape_committee_memberships()
+        # Get optional query parameter for current filter
+        current = request.args.get("current", "false").lower() == "true"
+        
+        committees_data = scraper.scrape_committee_memberships(current=current)
         return jsonify(
             {
                 "metadata": {
                     "scraped_at": datetime.now(timezone.utc).isoformat(),
                     "data_type": "Committee Memberships",
+                    "filter_current": current,
                 },
                 "committee_memberships": committees_data,
                 "summary": {
@@ -447,12 +590,16 @@ def scrape_committees() -> tuple[Any, int]:
 def scrape_government_roles_endpoint() -> tuple[Any, int]:
     """Scrape government roles."""
     try:
-        gov_roles_data = scraper.scrape_government_roles()
+        # Get optional query parameter for current filter
+        current = request.args.get("current", "false").lower() == "true"
+        
+        gov_roles_data = scraper.scrape_government_roles(current=current)
         return jsonify(
             {
                 "metadata": {
                     "scraped_at": datetime.now(timezone.utc).isoformat(),
                     "data_type": "Government Roles",
+                    "filter_current": current,
                 },
                 "government_roles": gov_roles_data,
                 "summary": {
@@ -478,6 +625,7 @@ def export_csv() -> tuple[Any, int]:
     try:
         # Get data type from query parameter, default to 'all'
         data_type = request.args.get("type", "all")
+        current = request.args.get("current", "false").lower() == "true"
 
         # Validate data type
         valid_types = ["all", "mps", "lords", "government-roles", "committees"]
@@ -491,7 +639,7 @@ def export_csv() -> tuple[Any, int]:
             ), 400
 
         # Export to CSV
-        exported_files = scraper.export_to_csv(data_type)
+        exported_files = scraper.export_to_csv(data_type, current)
 
         return jsonify(
             {
