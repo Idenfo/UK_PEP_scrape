@@ -156,6 +156,27 @@ Files are automatically named with timestamps for unique identification:
 
 ### CSV File Structure Examples
 
+#### Data Field Documentation
+
+**MNIS ID Field (`mnis_id`)**
+
+The `mnis_id` field appears as the second column in all CSV exports and represents a unique numeric identifier from the UK Parliament's **Members Names Information Service (MNIS)**.
+
+Key characteristics:
+- **Purpose**: Legacy numeric identifier used by the UK Parliament's internal MNIS system
+- **Format**: Numeric ID (e.g., 172, 4212, 662, 4057, 631)
+- **Scope**: Present for all members across MPs, Lords, committee memberships, and government roles
+- **Relationship**: Complements the primary `person_id` field (which uses URI format: `https://id.parliament.uk/...`)
+- **Usage**: Used for cross-referencing member data across different parliamentary systems and historical records
+
+The `mnis_id` provides a secondary identification method that is particularly useful for:
+- Integration with legacy parliamentary systems
+- Cross-referencing historical member data
+- Compatibility with existing parliamentary databases
+- Data validation and deduplication across datasets
+
+While the `person_id` field serves as the primary modern identifier with full URI format, the `mnis_id` maintains backward compatibility with established parliamentary data systems.
+
 #### MPs CSV (`uk_mps_*.csv`)
 ```csv
 person_id,mnis_id,given_name,family_name,other_names,display_name,full_title,gender,date_of_birth,date_of_death
