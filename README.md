@@ -102,6 +102,134 @@ curl -X POST http://localhost:5001/export/csv?type=government-roles
 curl -X POST http://localhost:5001/export/csv?type=committees
 ```
 
+## CSV Export Endpoint Details
+
+### Overview
+The CSV export endpoint allows you to export scraped UK Parliament data to CSV files stored in the `outputs/` directory. This is useful for data analysis, reporting, and integration with external tools.
+
+### Endpoint Specification
+- **URL**: `/export/csv`
+- **Method**: `POST` or `GET`
+- **Query Parameters**: 
+  - `type` (required): Data type to export (`all`, `mps`, `lords`, `government-roles`, `committees`)
+
+### Supported Data Types
+
+| Type | Description | Files Generated |
+|------|-------------|-----------------|
+| `all` | Export all available data | 6 CSV files (MPs, Lords, and their government roles and committee memberships) |
+| `mps` | Export MPs only | 1 CSV file with House of Commons members |
+| `lords` | Export Lords only | 1 CSV file with House of Lords members |
+| `government-roles` | Export government positions | 2 CSV files (MPs and Lords with government roles) |
+| `committees` | Export committee memberships | 2 CSV files (MPs and Lords committee memberships) |
+
+### CSV File Naming Convention
+Files are automatically named with timestamps for unique identification:
+- `uk_mps_YYYYMMDD_HHMMSS.csv` - Members of Parliament
+- `uk_lords_YYYYMMDD_HHMMSS.csv` - House of Lords members
+- `uk_mps_government_roles_YYYYMMDD_HHMMSS.csv` - MPs with government positions
+- `uk_lords_government_roles_YYYYMMDD_HHMMSS.csv` - Lords with government positions
+- `uk_mps_committee_memberships_YYYYMMDD_HHMMSS.csv` - MPs committee memberships
+- `uk_lords_committee_memberships_YYYYMMDD_HHMMSS.csv` - Lords committee memberships
+
+### CSV Export Response Structure
+```json
+{
+  "success": true,
+  "message": "Successfully exported mps data to CSV",
+  "data_type": "mps",
+  "exported_files": ["uk_mps_20250603_113333.csv"],
+  "file_count": 1,
+  "output_directory": "outputs/",
+  "timestamp": "2025-06-03T11:33:34.454105"
+}
+```
+
+### Error Response
+```json
+{
+  "error": "Invalid data type",
+  "message": "Data type must be one of: all, mps, lords, government-roles, committees",
+  "timestamp": "2025-06-03T11:33:34.454105"
+}
+```
+
+### CSV File Structure Examples
+
+#### MPs CSV (`uk_mps_*.csv`)
+```csv
+person_id,mnis_id,given_name,family_name,other_names,display_name,full_title,gender,date_of_birth,date_of_death
+https://id.parliament.uk/43RHonMf,172,Diane,Abbott,Julie,Ms Diane Abbott,Rt Hon Diane Abbott MP,Female,,
+```
+
+#### Government Roles CSV (`uk_mps_government_roles_*.csv`)
+```csv
+person_id,display_name,position_name,department,start_date,end_date,is_current
+https://id.parliament.uk/abc123,John Smith MP,Secretary of State,Department for Education,2024-01-01,,true
+```
+
+#### Committee Memberships CSV (`uk_mps_committee_memberships_*.csv`)
+```csv
+person_id,display_name,committee_name,role,start_date,end_date,is_current
+https://id.parliament.uk/def456,Jane Doe MP,Treasury Committee,Chair,2024-01-01,,true
+```
+
+### Usage Examples with Response Handling
+
+#### Export All Data with Error Handling
+```bash
+response=$(curl -s -X POST "http://localhost:5001/export/csv?type=all")
+if echo "$response" | grep -q "success.*true"; then
+    echo "Export successful!"
+    echo "$response" | python -m json.tool
+else
+    echo "Export failed:"
+    echo "$response" | python -m json.tool
+fi
+```
+
+#### Python Example
+```python
+import requests
+import json
+
+response = requests.post("http://localhost:5001/export/csv?type=mps")
+if response.status_code == 200:
+    data = response.json()
+    print(f"Exported {data['file_count']} files:")
+    for file in data['exported_files']:
+        print(f"  - {file}")
+else:
+    print(f"Error: {response.json()['message']}")
+```
+
+### File Storage
+- **Directory**: `outputs/` (automatically created if it doesn't exist)
+- **Permissions**: Files are created with standard read/write permissions
+- **Encoding**: UTF-8
+- **Format**: Standard CSV with comma separators and header row
+
+### File Management
+- Files are not automatically cleaned up - you may want to implement a cleanup strategy for production use
+- Each export creates new files with unique timestamps
+- Multiple exports of the same data type will create separate files
+- Files can be safely deleted after processing as they are regenerated on each export
+
+## Project Structure
+```
+UK_PEP_scrape_test/
+├── app.py                 # Main Flask application
+├── config.py             # Configuration settings
+├── environment.yml       # Conda environment specification
+├── README.md            # This documentation
+├── setup_and_run.sh     # Setup and run script
+├── test_api.py          # Comprehensive API test script
+└── outputs/             # CSV export directory (auto-created)
+    ├── uk_mps_*.csv
+    ├── uk_lords_*.csv
+    └── uk_*_committee_memberships_*.csv
+```
+
 ## JSON Response Structure
 
 ### Complete Data Response (`/scrape/all`)
@@ -180,7 +308,7 @@ You can set the following environment variables:
 - Python 3.9+
 - Flask 2.3.3
 - pdpy 0.1.6 (UK Parliament data library)
-- pandas >= 1.3.0
+- pandas >= 1.3.0 (required for CSV export functionality)
 - numpy >= 1.21.0
 - requests >= 2.25.0
 - gunicorn 21.2.0 (for production deployment)
@@ -213,8 +341,27 @@ To add new data sources, extend the `UKGovernmentScraper` class in `app.py` and 
 ### Testing
 ```bash
 # Test the service locally
-curl http://localhost:5000/health
+curl http://localhost:5001/health
 
 # Test data endpoints
-curl http://localhost:5000/scrape/mps | python -m json.tool
+curl http://localhost:5001/scrape/mps | python -m json.tool
+
+# Test CSV export functionality
+curl -X POST "http://localhost:5001/export/csv?type=mps" | python -m json.tool
+
+# Run the comprehensive test script
+python test_api.py
+```
+
+#### Test Script Features
+The included `test_api.py` script provides comprehensive testing of all endpoints:
+- Tests all JSON API endpoints with detailed output
+- Tests all CSV export data types
+- Provides curl examples for manual testing
+- Shows response summaries and file counts
+- Includes error handling and connection testing
+
+```bash
+# Run all tests including CSV export
+python test_api.py
 ```
