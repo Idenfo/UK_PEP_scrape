@@ -45,7 +45,10 @@ class UKGovernmentScraper:
                 data_dict = data
 
             # Cache the data
-            self.cache["mps"] = {"data": data_dict, "timestamp": datetime.now().isoformat()}
+            self.cache["mps"] = {
+                "data": data_dict,
+                "timestamp": datetime.now().isoformat(),
+            }
 
             return data_dict
         except Exception as e:
@@ -64,7 +67,10 @@ class UKGovernmentScraper:
                 data_dict = data
 
             # Cache the data
-            self.cache["lords"] = {"data": data_dict, "timestamp": datetime.now().isoformat()}
+            self.cache["lords"] = {
+                "data": data_dict,
+                "timestamp": datetime.now().isoformat(),
+            }
 
             return data_dict
         except Exception as e:
@@ -81,7 +87,10 @@ class UKGovernmentScraper:
             mps_roles = mps_gov_roles.to_dict("records") if hasattr(mps_gov_roles, "to_dict") else mps_gov_roles
             lords_roles = lords_gov_roles.to_dict("records") if hasattr(lords_gov_roles, "to_dict") else lords_gov_roles
 
-            return {"mps_government_roles": mps_roles, "lords_government_roles": lords_roles}
+            return {
+                "mps_government_roles": mps_roles,
+                "lords_government_roles": lords_roles,
+            }
         except Exception as e:
             logger.error(f"Error scraping government roles: {e!s}")
             raise
@@ -98,7 +107,10 @@ class UKGovernmentScraper:
                 lords_committees.to_dict("records") if hasattr(lords_committees, "to_dict") else lords_committees
             )
 
-            return {"mps_committee_memberships": mps_comm, "lords_committee_memberships": lords_comm}
+            return {
+                "mps_committee_memberships": mps_comm,
+                "lords_committee_memberships": lords_comm,
+            }
         except Exception as e:
             logger.error(f"Error scraping committee memberships: {e!s}")
             raise
@@ -312,7 +324,11 @@ def scrape_all():
     except Exception as e:
         logger.error(f"Error in scrape_all endpoint: {e!s}")
         return jsonify(
-            {"error": "Failed to scrape data", "message": str(e), "timestamp": datetime.now().isoformat()},
+            {
+                "error": "Failed to scrape data",
+                "message": str(e),
+                "timestamp": datetime.now().isoformat(),
+            },
         ), 500
 
 
@@ -337,7 +353,11 @@ def scrape_mps():
     except Exception as e:
         logger.error(f"Error in scrape_mps endpoint: {e!s}")
         return jsonify(
-            {"error": "Failed to scrape MPs data", "message": str(e), "timestamp": datetime.now().isoformat()},
+            {
+                "error": "Failed to scrape MPs data",
+                "message": str(e),
+                "timestamp": datetime.now().isoformat(),
+            },
         ), 500
 
 
@@ -348,7 +368,10 @@ def scrape_lords():
         lords_data = scraper.scrape_lords()
         return jsonify(
             {
-                "metadata": {"scraped_at": datetime.now().isoformat(), "data_type": "Members of House of Lords"},
+                "metadata": {
+                    "scraped_at": datetime.now().isoformat(),
+                    "data_type": "Members of House of Lords",
+                },
                 "house_of_lords": lords_data,
                 "summary": {
                     "total_count": len(lords_data),
@@ -359,7 +382,11 @@ def scrape_lords():
     except Exception as e:
         logger.error(f"Error in scrape_lords endpoint: {e!s}")
         return jsonify(
-            {"error": "Failed to scrape Lords data", "message": str(e), "timestamp": datetime.now().isoformat()},
+            {
+                "error": "Failed to scrape Lords data",
+                "message": str(e),
+                "timestamp": datetime.now().isoformat(),
+            },
         ), 500
 
 
@@ -370,7 +397,10 @@ def scrape_committees():
         committees_data = scraper.scrape_committee_memberships()
         return jsonify(
             {
-                "metadata": {"scraped_at": datetime.now().isoformat(), "data_type": "Committee Memberships"},
+                "metadata": {
+                    "scraped_at": datetime.now().isoformat(),
+                    "data_type": "Committee Memberships",
+                },
                 "committee_memberships": committees_data,
                 "summary": {
                     "total_mps_committee_memberships": len(committees_data.get("mps_committee_memberships", [])),
@@ -381,7 +411,11 @@ def scrape_committees():
     except Exception as e:
         logger.error(f"Error in scrape_committees endpoint: {e!s}")
         return jsonify(
-            {"error": "Failed to scrape committees data", "message": str(e), "timestamp": datetime.now().isoformat()},
+            {
+                "error": "Failed to scrape committees data",
+                "message": str(e),
+                "timestamp": datetime.now().isoformat(),
+            },
         ), 500
 
 
@@ -392,7 +426,10 @@ def scrape_government_roles():
         gov_roles_data = scraper.scrape_government_roles()
         return jsonify(
             {
-                "metadata": {"scraped_at": datetime.now().isoformat(), "data_type": "Government Roles"},
+                "metadata": {
+                    "scraped_at": datetime.now().isoformat(),
+                    "data_type": "Government Roles",
+                },
                 "government_roles": gov_roles_data,
                 "summary": {
                     "total_mps_government_roles": len(gov_roles_data.get("mps_government_roles", [])),
@@ -447,7 +484,11 @@ def export_csv():
     except Exception as e:
         logger.error(f"Error in export_csv endpoint: {e!s}")
         return jsonify(
-            {"error": "Failed to export CSV files", "message": str(e), "timestamp": datetime.now().isoformat()},
+            {
+                "error": "Failed to export CSV files",
+                "message": str(e),
+                "timestamp": datetime.now().isoformat(),
+            },
         ), 500
 
 
