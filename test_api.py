@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
 """
-Test script for the UK Government Members Scraper API
-Demonstrates all available endpoints and their JSON responses
+Test script for the UK Government Members Scraper API.
+
+Demonstrates all available endpoints and their JSON responses.
 """
 
 import requests
 
 BASE_URL = "http://localhost:5001"
 
-def print_section(title):
-    """Print a formatted section header"""
+def print_section(title: str) -> None:
+    """Print a formatted section header."""
     print(f"\n{'='*60}")
     print(f"  {title}")
     print('='*60)
 
-def test_endpoint(endpoint, description):
-    """Test an API endpoint and display results"""
+def test_endpoint(endpoint: str, description: str) -> None:
+    """Test an API endpoint and display results."""
     print(f"\n🌐 Testing: {endpoint}")
     print(f"📝 Description: {description}")
     
@@ -93,8 +94,8 @@ def test_endpoint(endpoint, description):
     except Exception as e:
         print(f"❌ Error: {str(e)}")
 
-def test_csv_export_endpoint(data_type="all"):
-    """Test the CSV export endpoint"""
+def test_csv_export_endpoint(data_type: str = "all") -> None:
+    """Test the CSV export endpoint."""
     print(f"\n🌐 Testing CSV Export: /export/csv?type={data_type}")
     print(f"📝 Description: Export {data_type} data to CSV files")
     
@@ -124,8 +125,8 @@ def test_csv_export_endpoint(data_type="all"):
     except Exception as e:
         print(f"❌ Error: {str(e)}")
 
-def main():
-    """Main test function"""
+def main() -> None:
+    """Main test function."""
     print_section("UK Government Members Scraper API Test")
     print("Testing all available endpoints...")
     
@@ -167,3 +168,7 @@ def main():
     print("• Export Lords data:   curl -X POST http://localhost:5001/export/csv?type=lords")
     print("• Export gov roles:    curl -X POST http://localhost:5001/export/csv?type=government-roles")
     print("• Export committees:   curl -X POST http://localhost:5001/export/csv?type=committees")
+
+
+if __name__ == "__main__":
+    main()
