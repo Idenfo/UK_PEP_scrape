@@ -158,24 +158,65 @@ Files are automatically named with timestamps for unique identification:
 
 #### Data Field Documentation
 
-**MNIS ID Field (`mnis_id`)**
+**Core Identity Fields**
 
-The `mnis_id` field appears as the second column in all CSV exports and represents a unique numeric identifier from the UK Parliament's **Members Names Information Service (MNIS)**.
+**Person ID (`person_id`)**
+- **Purpose**: Primary unique identifier for parliament members
+- **Format**: URI format `https://id.parliament.uk/{unique_id}`
+- **Example**: `https://id.parliament.uk/43RHonMf`
+- **Usage**: Modern parliamentary API standard identifier for cross-referencing across all parliamentary systems
 
-Key characteristics:
-- **Purpose**: Legacy numeric identifier used by the UK Parliament's internal MNIS system
+**MNIS ID (`mnis_id`)**
+- **Purpose**: Legacy numeric identifier from the UK Parliament's **Members Names Information Service (MNIS)**
 - **Format**: Numeric ID (e.g., 172, 4212, 662, 4057, 631)
 - **Scope**: Present for all members across MPs, Lords, committee memberships, and government roles
-- **Relationship**: Complements the primary `person_id` field (which uses URI format: `https://id.parliament.uk/...`)
+- **Relationship**: Complements the primary `person_id` field
 - **Usage**: Used for cross-referencing member data across different parliamentary systems and historical records
 
-The `mnis_id` provides a secondary identification method that is particularly useful for:
-- Integration with legacy parliamentary systems
-- Cross-referencing historical member data
-- Compatibility with existing parliamentary databases
-- Data validation and deduplication across datasets
+**Personal Information Fields**
 
-While the `person_id` field serves as the primary modern identifier with full URI format, the `mnis_id` maintains backward compatibility with established parliamentary data systems.
+**Name Fields**
+- **`given_name`**: First name(s) of the member (e.g., "Diane", "Nigel")
+- **`family_name`**: Surname/last name (e.g., "Abbott", "Adams")
+- **`other_names`**: Middle names or additional names (e.g., "Julie", "Angela Elspeth Marie")
+- **`display_name`**: Commonly used public name (e.g., "Ms Diane Abbott", "Nigel Adams")
+- **`full_title`**: Complete formal title including honors (e.g., "Rt Hon Diane Abbott MP", "The Baroness Adams of Craigielea")
+
+**Demographics**
+- **`gender`**: Gender identification ("Male", "Female")
+- **`date_of_birth`**: Birth date (ISO format YYYY-MM-DD, may be empty for privacy)
+- **`date_of_death`**: Death date (ISO format YYYY-MM-DD, empty if living)
+
+**Government Role Fields** (for `*_government_roles_*.csv` files)
+
+**Position Information**
+- **`position_id`**: Unique identifier for the government position (URI format)
+- **`position_name`**: Official title of the government role (e.g., "Assistant Whip (HM Treasury)", "Parliamentary Under-Secretary")
+
+**Incumbency Tracking**
+- **`government_incumbency_id`**: Unique identifier for this specific appointment period
+- **`government_incumbency_start_date`**: When the person started in this role (YYYY-MM-DD)
+- **`government_incumbency_end_date`**: When the person left this role (YYYY-MM-DD, empty if current)
+
+**Committee Membership Fields** (for `*_committee_memberships_*.csv` files)
+
+**Committee Information**
+- **`committee_id`**: Unique identifier for the committee (URI format)
+- **`committee_name`**: Official name of the committee (e.g., "Treasury Committee", "Foreign Affairs Committee")
+- **`committee_type_id`**: Identifier for the type of committee
+- **`committee_type_name`**: Description of committee type (e.g., "Parliamentary - Select")
+
+**Membership Tracking**
+- **`committee_membership_id`**: Unique identifier for this specific membership period
+- **`committee_membership_start_date`**: When the person joined the committee (YYYY-MM-DD)
+- **`committee_membership_end_date`**: When the person left the committee (YYYY-MM-DD, empty if current)
+
+**Data Quality Notes**
+- Empty fields indicate missing or non-applicable data
+- Date fields follow ISO 8601 format (YYYY-MM-DD)
+- All URI-based IDs link to official UK Parliament API resources
+- Historical data may have gaps due to record-keeping limitations
+- The `mnis_id` provides backward compatibility with legacy parliamentary systems
 
 #### MPs CSV (`uk_mps_*.csv`)
 ```csv
