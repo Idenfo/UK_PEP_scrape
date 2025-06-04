@@ -1,0 +1,41 @@
+[run]
+# Measure coverage for all Python files in the project
+source = .
+
+# Exclude test files and other non-application files
+omit = 
+    test_*.py
+    *test*.py
+    conftest.py
+    debug_*.py
+    simple_debug.py
+    vscode_*.py
+    setup.py
+    */tests/*
+    */test_*
+    */.venv/*
+    */venv/*
+    */env/*
+    */__pycache__/*
+    .pytest_cache/*
+
+[report]
+# Show missing lines in coverage report
+show_missing = True
+
+# Skip covered files in report
+skip_covered = False
+
+# Precision for coverage percentage
+precision = 1
+
+# Sort coverage report by name
+sort = Name
+
+[html]
+# Directory for HTML coverage report
+directory = htmlcov
+
+[xml]
+# Output file for XML coverage report (for CI/CD)
+output = coverage.xml
