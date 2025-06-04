@@ -256,6 +256,9 @@ class UKGovernmentScraper:
             def safe_len(obj: Any) -> int:
                 """Safely get length of object, return 0 if not possible."""
                 try:
+                    # Only count valid list-like structures, not strings
+                    if obj is None or isinstance(obj, str):
+                        return 0
                     return len(obj)
                 except (TypeError, AttributeError):
                     return 0
