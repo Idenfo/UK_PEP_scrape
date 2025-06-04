@@ -1,0 +1,84 @@
+[tool.pytest.ini_options]
+# Pytest configuration for UK PEP Scraper tests
+
+# Test discovery
+testpaths = [
+    ".",
+    "tests"
+]
+
+# Test file patterns
+python_files = [
+    "test_*.py",
+    "*_test.py"
+]
+
+# Ignore patterns
+norecursedirs = [
+    "__pycache__",
+    "htmlcov",
+    "outputs",
+    ".git"
+]
+
+# File collection ignore patterns
+collect_ignore = [
+    "test_app_fixed.py.bak",
+    "conftest.py.bak", 
+    "setup.py",
+    "vscode_test_diagnostics.py",
+    "simple_debug.py",
+    "debug_vscode_tests.py"
+]
+
+python_classes = [
+    "Test*"
+]
+
+python_functions = [
+    "test_*"
+]
+
+# Output options - coverage removed for VS Code compatibility
+addopts = [
+    "-v",                    # Verbose output
+    "--tb=short",           # Short traceback format
+    "--strict-markers",     # Strict marker handling
+    "--disable-warnings",   # Disable warnings for cleaner output
+    "-ra",                  # Show extra test summary info for all except passed
+    # Coverage options moved to separate command/task
+    # "--cov=app",           # Coverage for app module  
+    # "--cov-report=html",   # HTML coverage report
+    # "--cov-report=term",   # Terminal coverage report
+    "--durations=10",      # Show 10 slowest tests
+]
+
+# Markers for test categorization
+markers = [
+    "unit: Unit tests for individual functions/methods",
+    "integration: Integration tests for API endpoints",
+    "slow: Tests that take a long time to run",
+    "api: Tests for API endpoints",
+    "scraper: Tests for scraping functionality",
+    "csv: Tests for CSV export functionality",
+    "error: Tests for error handling",
+    "cache: Tests for caching functionality"
+]
+
+# Minimum version
+minversion = "6.0"
+
+# Test timeout (in seconds)
+timeout = 300
+
+# Filtering
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning"
+]
+
+# Logging
+log_cli = true
+log_cli_level = "INFO"
+log_cli_format = "%(asctime)s [%(levelname)8s] %(name)s: %(message)s"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"
